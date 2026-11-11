@@ -1,6 +1,6 @@
 #import <Flutter/Flutter.h>
 
-@interface HandleFilePlugin : NSObject <FlutterPlugin>
+@interface HandleFilePlugin : NSObject <FlutterPlugin, FlutterSceneLifeCycleDelegate>
 + (instancetype)sharedInstance;
 /*- (BOOL)application:(UIApplication *)application
     continueUserActivity:(NSUserActivity *)userActivity
