@@ -34,7 +34,10 @@ static id _instance;
                                 binaryMessenger:[registrar messenger]];
   [chargingChannel setStreamHandler:instance];
 
+  // The application delegate is still used by apps that have not migrated to the UIScene life
+  // cycle. Apps that have migrated only receive the scene callbacks below.
   [registrar addApplicationDelegate:instance];
+  [registrar addSceneDelegate:instance];
 }
 
 - (void)setLatestFile:(NSString *)latestFile {
@@ -65,6 +68,46 @@ static id _instance;
 - (BOOL)application:(UIApplication *)application
     continueUserActivity:(NSUserActivity *)userActivity
       restorationHandler:(void (^)(NSArray *_Nullable))restorationHandler {
+  return [self handleUserActivity:userActivity];
+}
+
+#pragma mark - FlutterSceneLifeCycleDelegate
+
+// With the UIScene life cycle the launch options are nil, so the file that launched the app is
+// read from the connection options instead.
+- (BOOL)scene:(UIScene *)scene
+    willConnectToSession:(UISceneSession *)session
+                 options:(UISceneConnectionOptions *)connectionOptions {
+  NSURL *url = connectionOptions.URLContexts.anyObject.URL;
+  if (url != nil) {
+    self.initialFile = [url absoluteString];
+    self.latestFile = self.initialFile;
+    return YES;
+  }
+  for (NSUserActivity *userActivity in connectionOptions.userActivities) {
+    if ([self handleUserActivity:userActivity]) {
+      return YES;
+    }
+  }
+  return NO;
+}
+
+- (BOOL)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts {
+  NSURL *url = URLContexts.anyObject.URL;
+  if (url == nil) {
+    return NO;
+  }
+  self.latestFile = [url absoluteString];
+  return YES;
+}
+
+- (BOOL)scene:(UIScene *)scene continueUserActivity:(NSUserActivity *)userActivity {
+  return [self handleUserActivity:userActivity];
+}
+
+#pragma mark - Private
+
+- (BOOL)handleUserActivity:(NSUserActivity *)userActivity {
   if ([userActivity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb]) {
     self.latestFile = [userActivity.webpageURL absoluteString];
     if (!_eventSink) {
